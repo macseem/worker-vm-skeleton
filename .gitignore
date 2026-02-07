@@ -1,0 +1,40 @@
+# Terraform
+terraform/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+!terraform.tfvars.example
+
+# SSH Keys
+*.pem
+*.key
+id_*
+!id_*.pub
+
+# Docker
+.env
+.docker/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# Sensitive data
+config/cloudflare-origin.pem
+config/cloudflare-origin.key
