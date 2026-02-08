@@ -14,5 +14,5 @@ output "vm_ip" {
 
 output "cloudflare_zone_id" {
   description = "Cloudflare Zone ID"
-  value       = cloudflare_zone.primary.id
+  value       = data.cloudflare_zone.primary.id
 }

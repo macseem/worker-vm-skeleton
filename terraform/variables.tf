@@ -15,6 +15,11 @@ variable "vm_ip" {
   type        = string
 }
 
+variable "cloudflare_account_id" {
+  description = "Cloudflare Account ID"
+  type        = string
+}
+
 variable "enable_portainer" {
   description = "Create DNS record for portainer subdomain"
   type        = bool
