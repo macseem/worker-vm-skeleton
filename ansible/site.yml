@@ -1,0 +1,28 @@
+---
+- name: Provision Worker VM
+  hosts: worker_vms
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - role: common
+      tags: common
+
+    - role: docker
+      tags: docker
+
+    - role: users
+      tags: users
+
+    - role: infrastructure
+      tags: infrastructure
+
+  post_tasks:
+    - name: Ensure output directory exists locally
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/output"
+        state: directory
+        mode: '0700'
+      delegate_to: localhost
+      become: no
+      run_once: yes

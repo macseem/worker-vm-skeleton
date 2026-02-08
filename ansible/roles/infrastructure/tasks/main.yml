@@ -1,0 +1,124 @@
+---
+- name: Create infrastructure directory structure
+  ansible.builtin.file:
+    path: "{{ infrastructure_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0755'
+  loop:
+    - npm
+    - portainer
+
+- name: Deploy NPM docker-compose file
+  ansible.builtin.template:
+    src: npm.docker-compose.yml.j2
+    dest: "{{ infrastructure_dir }}/npm/docker-compose.yml"
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0644'
+
+- name: Deploy Portainer docker-compose file
+  ansible.builtin.template:
+    src: portainer.docker-compose.yml.j2
+    dest: "{{ infrastructure_dir }}/portainer/docker-compose.yml"
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0644'
+
+- name: Deploy NPM systemd service
+  ansible.builtin.template:
+    src: npm.service.j2
+    dest: /etc/systemd/system/npm.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Deploy Portainer systemd service
+  ansible.builtin.template:
+    src: portainer.service.j2
+    dest: /etc/systemd/system/portainer.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start NPM systemd service
+  ansible.builtin.systemd:
+    name: npm
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Enable and start Portainer systemd service
+  ansible.builtin.systemd:
+    name: portainer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Create helper scripts directory
+  ansible.builtin.file:
+    path: "/home/{{ macseem_username }}/docker-apps"
+    state: directory
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0755'
+
+- name: Create start.sh helper script
+  ansible.builtin.template:
+    src: start.sh.j2
+    dest: "/home/{{ macseem_username }}/docker-apps/start.sh"
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0755'
+
+- name: Create stop.sh helper script
+  ansible.builtin.template:
+    src: stop.sh.j2
+    dest: "/home/{{ macseem_username }}/docker-apps/stop.sh"
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0755'
+
+- name: Create logs.sh helper script
+  ansible.builtin.template:
+    src: logs.sh.j2
+    dest: "/home/{{ macseem_username }}/docker-apps/logs.sh"
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0755'
+
+- name: Get VM IP address
+  ansible.builtin.shell: hostname -I | awk '{print $1}'
+  register: discovered_vm_ip
+  changed_when: false
+
+- name: Display completion summary
+  ansible.builtin.debug:
+    msg:
+      - "========================================"
+      - "Setup Complete!"
+      - "========================================"
+      - ""
+      - "Services:"
+      - "  Portainer: https://portainer.{{ domain }}"
+      - "  NPM Admin: http://{{ discovered_vm_ip.stdout | trim }}:81"
+      - ""
+      - "NPM Default Credentials:"
+      - "  Email:    admin@example.com"
+      - "  Password: changeme"
+      - ""
+      - "Next Steps:"
+      - "  1. Configure NPM with Cloudflare SSL certs"
+      - "  2. Set up portainer.{{ domain }} proxy host"
+      - "  3. Access Portainer and create admin user"
+      - "  4. Start deploying your apps!"
+      - ""
+      - "Helper scripts available in ~/docker-apps/"
+      - "  ./start.sh   - Start all services"
+      - "  ./stop.sh    - Stop all services"
+      - "  ./logs.sh <name> - View service logs"
+      - ""
+      - "SSH Private Keys saved to:"
+      - "  - output/{{ macseem_username }}_key"
+      - "  - output/{{ worker_username }}_key"
+      - ""
+      - "========================================"

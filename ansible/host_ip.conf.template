@@ -1,0 +1,5 @@
+# VM Host IP Configuration
+# Copy this file to host_ip.conf and set your VM's IP address
+# host_ip.conf is gitignored and will not be committed
+
+TARGET_HOST=your.vm.ip.address.here

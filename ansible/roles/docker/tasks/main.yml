@@ -1,0 +1,85 @@
+---
+- name: Remove old Docker versions
+  ansible.builtin.apt:
+    name:
+      - docker
+      - docker-engine
+      - docker.io
+      - containerd
+      - runc
+    state: absent
+  ignore_errors: yes
+
+- name: Install Docker dependencies
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Add Docker GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: Add Docker repository
+  ansible.builtin.shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  args:
+    creates: /etc/apt/sources.list.d/docker.list
+
+- name: Update apt cache after adding Docker repo
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Docker
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add macseem to docker group
+  ansible.builtin.user:
+    name: "{{ macseem_username }}"
+    groups: docker
+    append: yes
+
+- name: Add worker to docker group
+  ansible.builtin.user:
+    name: "{{ worker_username }}"
+    groups: docker
+    append: yes
+
+- name: Create docker-apps directory for macseem
+  ansible.builtin.file:
+    path: "/home/{{ macseem_username }}/docker-apps"
+    state: directory
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0755'
+
+- name: Create docker-apps directory for worker
+  ansible.builtin.file:
+    path: "/home/{{ worker_username }}/docker-apps"
+    state: directory
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0755'

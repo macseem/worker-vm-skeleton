@@ -37,3 +37,5 @@ Thumbs.db
 # Sensitive data
 config/cloudflare-origin.pem
 config/cloudflare-origin.key
+
+output

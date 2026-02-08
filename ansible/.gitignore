@@ -1,0 +1,21 @@
+# Ansible output directory
+output/
+
+# Host IP configuration (local only)
+host_ip.conf
+
+# Vault password files (if you create them)
+.vault_pass
+.vault_password
+
+# Ansible retry files
+*.retry
+
+# Local environment files
+.env
+.env.local
+
+# Ansible vault files (contain encrypted secrets - NEVER commit!)
+vault.yml
+*.vault.yml
+group_vars/*/vault.yml

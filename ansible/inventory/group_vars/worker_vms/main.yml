@@ -1,0 +1,4 @@
+# Group variables for worker_vms
+# Update this with your VM's IP address
+
+vm_ip: 46.225.108.239

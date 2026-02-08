@@ -1,0 +1,173 @@
+---
+- name: Create macseem user with zsh
+  ansible.builtin.user:
+    name: "{{ macseem_username }}"
+    shell: /bin/zsh
+    create_home: yes
+    state: present
+
+- name: Create worker user with bash
+  ansible.builtin.user:
+    name: "{{ worker_username }}"
+    shell: /bin/bash
+    create_home: yes
+    state: present
+
+- name: Create .ssh directory for macseem
+  ansible.builtin.file:
+    path: "/home/{{ macseem_username }}/.ssh"
+    state: directory
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0700'
+
+- name: Create .ssh directory for worker
+  ansible.builtin.file:
+    path: "/home/{{ worker_username }}/.ssh"
+    state: directory
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0700'
+
+- name: Add user public key to macseem authorized_keys
+  ansible.posix.authorized_key:
+    user: "{{ macseem_username }}"
+    key: "{{ user_public_key }}"
+    state: present
+
+- name: Add user public key to worker authorized_keys
+  ansible.posix.authorized_key:
+    user: "{{ worker_username }}"
+    key: "{{ user_public_key }}"
+    state: present
+
+- name: Generate SSH keypair for macseem
+  community.crypto.openssh_keypair:
+    path: "/home/{{ macseem_username }}/.ssh/id_ed25519"
+    type: ed25519
+    comment: "{{ macseem_username }}@{{ domain }}"
+    owner: "{{ macseem_username }}"
+    group: "{{ macseem_username }}"
+    mode: '0600'
+    regenerate: full_idempotence
+    passphrase: "{{ ssh_key_passphrase | default(omit) }}"
+  register: macseem_key
+
+- name: Generate SSH keypair for worker
+  community.crypto.openssh_keypair:
+    path: "/home/{{ worker_username }}/.ssh/id_ed25519"
+    type: ed25519
+    comment: "{{ worker_username }}@{{ domain }}"
+    owner: "{{ worker_username }}"
+    group: "{{ worker_username }}"
+    mode: '0600'
+    regenerate: full_idempotence
+    passphrase: "{{ ssh_key_passphrase | default(omit) }}"
+  register: worker_key
+
+- name: Get existing GitHub SSH keys
+  ansible.builtin.uri:
+    url: https://api.github.com/user/keys
+    method: GET
+    headers:
+      Authorization: "Bearer {{ github_api_token }}"
+      Accept: application/vnd.github.v3+json
+    return_content: yes
+  when: github_api_token is defined and github_api_token != ""
+  register: github_keys
+  ignore_errors: yes
+
+- name: Add macseem SSH key to GitHub
+  ansible.builtin.uri:
+    url: https://api.github.com/user/keys
+    method: POST
+    headers:
+      Authorization: "Bearer {{ github_api_token }}"
+      Accept: application/vnd.github.v3+json
+    body_format: json
+    body:
+      title: "{{ macseem_username }}@{{ domain }}"
+      key: "{{ macseem_key.public_key }}"
+    status_code: [201, 422]
+  when:
+    - github_api_token is defined and github_api_token != ""
+    - github_keys is succeeded
+    - macseem_key.public_key | default("") not in (github_keys.json | default([]) | map(attribute='key') | list)
+
+- name: Add worker SSH key to GitHub
+  ansible.builtin.uri:
+    url: https://api.github.com/user/keys
+    method: POST
+    headers:
+      Authorization: "Bearer {{ github_api_token }}"
+      Accept: application/vnd.github.v3+json
+    body_format: json
+    body:
+      title: "{{ worker_username }}@{{ domain }}"
+      key: "{{ worker_key.public_key }}"
+    status_code: [201, 422]
+  when:
+    - github_api_token is defined and github_api_token != ""
+    - github_keys is succeeded
+    - worker_key.public_key | default("") not in (github_keys.json | default([]) | map(attribute='key') | list)
+
+- name: Ensure output directory exists locally
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../output"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  become: no
+
+- name: Check if macseem key already exists locally
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../output/{{ macseem_username }}_key"
+  delegate_to: localhost
+  become: no
+  register: macseem_key_local
+
+- name: Fetch macseem private key to control machine
+  ansible.builtin.fetch:
+    src: "/home/{{ macseem_username }}/.ssh/id_ed25519"
+    dest: "{{ playbook_dir }}/../output/{{ macseem_username }}_key"
+    flat: yes
+  when: not macseem_key_local.stat.exists or macseem_key.changed
+
+- name: Check if worker key already exists locally
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../output/{{ worker_username }}_key"
+  delegate_to: localhost
+  become: no
+  register: worker_key_local
+
+- name: Fetch worker private key to control machine
+  ansible.builtin.fetch:
+    src: "/home/{{ worker_username }}/.ssh/id_ed25519"
+    dest: "{{ playbook_dir }}/../output/{{ worker_username }}_key"
+    flat: yes
+  when: not worker_key_local.stat.exists or worker_key.changed
+
+- name: Set permissions on fetched macseem key
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../output/{{ macseem_username }}_key"
+    mode: '0600'
+  delegate_to: localhost
+  become: no
+  when: not macseem_key_local.stat.exists or macseem_key.changed
+
+- name: Set permissions on fetched worker key
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/../output/{{ worker_username }}_key"
+    mode: '0600'
+  delegate_to: localhost
+  become: no
+  when: not worker_key_local.stat.exists or worker_key.changed
+
+- name: Display key locations
+  ansible.builtin.debug:
+    msg:
+      - "SSH keys have been generated and fetched to:"
+      - "  - output/{{ macseem_username }}_key (macseem private key)"
+      - "  - output/{{ worker_username }}_key (worker private key)"
+      - ""
+      - "These keys have also been added to GitHub (if API token was provided)"

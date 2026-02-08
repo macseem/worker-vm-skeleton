@@ -1,0 +1,8 @@
+#!/bin/bash
+# Show logs for a service
+if [[ -z "$1" ]]; then
+    echo "Usage: ./logs.sh <service-name>"
+    exit 1
+fi
+
+cd "$1" && docker compose logs -f

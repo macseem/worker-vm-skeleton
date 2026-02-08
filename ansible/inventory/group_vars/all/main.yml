@@ -1,0 +1,19 @@
+---
+# Non-sensitive variables
+# Sensitive values are in vault.yml (encrypted)
+
+# User configuration
+macseem_username: "macseem"
+worker_username: "worker"
+
+# System configuration
+docker_version: "latest"
+
+# Infrastructure paths
+infrastructure_dir: "/home/{{ worker_username }}/docker-apps/infrastructure"
+
+# Secrets from vault (these reference the encrypted vault_ variables)
+github_api_token: "{{ vault_github_api_token }}"
+user_public_key: "{{ vault_user_public_key }}"
+domain: "{{ vault_domain }}"
+ssh_key_passphrase: "{{ vault_ssh_key_passphrase | default('') }}"
