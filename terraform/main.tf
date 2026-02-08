@@ -27,6 +27,16 @@ resource "cloudflare_record" "portainer" {
   proxied = true
 }
 
+# A record for portainer subdomain
+resource "cloudflare_record" "worker" {
+  zone_id = cloudflare_zone.primary.id
+  name    = "worker"
+  content = var.vm_ip
+  type    = "A"
+  ttl     = 300
+  proxied = true
+}
+
 # A record for npm subdomain (optional, for direct access)
 resource "cloudflare_record" "npm" {
   zone_id = cloudflare_zone.primary.id
